@@ -1,0 +1,367 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solar Cockpit",
+        "description": "Point to entities of integrations you already have (inverter, PV forecast, meter reader …). Only PV power is required.",
+        "sections": {
+          "pv": {
+            "name": "Photovoltaics",
+            "data": {
+              "pv_power": "Total PV power",
+              "pv_strings": "PV strings (power)",
+              "pv_energy_total": "PV energy total"
+            },
+            "data_description": {
+              "pv_power": "Power of all strings (W/kW).",
+              "pv_strings": "Optional: individual MPPT/string power for the card.",
+              "pv_energy_total": "Cumulative counter in kWh – basis for yield, self-consumption and savings."
+            }
+          },
+          "battery": {
+            "name": "Battery",
+            "data": {
+              "battery_soc": "State of charge (SOC)",
+              "battery_power": "Battery power",
+              "battery_power_invert": "Invert sign (battery)",
+              "battery_charge_total": "Battery charged (total)",
+              "battery_discharge_total": "Battery discharged (total)",
+              "battery_capacity_kwh": "Usable capacity",
+              "battery_min_soc": "Discharge limit (SOC)"
+            },
+            "data_description": {
+              "battery_power": "One signed sensor.",
+              "battery_power_invert": "Target: positive = charging. Turn on if your inverter reports charging as a negative value.",
+              "battery_capacity_kwh": "Usable capacity, e.g. Ah × nominal voltage ÷ 1000.",
+              "battery_min_soc": "Below this SOC the inverter stops discharging."
+            }
+          },
+          "house": {
+            "name": "House & inverter grid",
+            "data": {
+              "house_power": "House consumption",
+              "grid_power": "Grid power",
+              "grid_power_invert": "Invert sign (grid)"
+            },
+            "data_description": {
+              "house_power": "Leave empty = PV + grid − battery.",
+              "grid_power": "One signed sensor.",
+              "grid_power_invert": "Target: positive = import (buying). Turn on if your inverter reports import as a negative value."
+            }
+          },
+          "meter": {
+            "name": "Utility meter (e.g. Tasmota reader)",
+            "data": {
+              "meter_import_total": "Import total (1.8.0)",
+              "meter_export_total": "Export total (2.8.0)",
+              "meter_power": "Meter power"
+            },
+            "data_description": {
+              "meter_import_total": "Billing meter, kWh.",
+              "meter_power": "Fallback only, if no grid power is set."
+            }
+          },
+          "forecast": {
+            "name": "Forecast (e.g. Forecast.Solar)",
+            "data": {
+              "forecast_today": "Forecast today",
+              "forecast_today_remaining": "Forecast rest of today",
+              "forecast_tomorrow": "Forecast tomorrow",
+              "forecast_power_now": "Forecast power now"
+            }
+          },
+          "prices": {
+            "name": "Prices",
+            "data": {
+              "price_buy_entity": "Import price from entity (optional)",
+              "price_buy": "Import price (start value)",
+              "price_sell_entity": "Feed-in tariff from entity (optional)",
+              "price_sell": "Feed-in tariff (start value)"
+            },
+            "data_description": {
+              "price_buy_entity": "Only for a dynamic tariff. Leave empty to set the price on the Solar Cockpit device or dashboard (ct/kWh is converted).",
+              "price_buy": "Start value of the 'Import price' setting. Change it later on the device or dashboard.",
+              "price_sell_entity": "Only for a variable feed-in tariff. Leave empty to use the 'Feed-in tariff' setting.",
+              "price_sell": "Start value of the 'Feed-in tariff' setting."
+            }
+          },
+          "surplus": {
+            "name": "PV surplus switch",
+            "data": {
+              "surplus_on_w": "Turn on at",
+              "surplus_off_w": "Turn off below",
+              "surplus_min_soc": "Minimum SOC"
+            },
+            "data_description": {
+              "surplus_on_w": "Surplus in W.",
+              "surplus_min_soc": "Only turn on when the battery is at least this full."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "surplus_hysteresis": "Turn-off threshold must be below turn-on threshold.",
+      "need_grid_or_house": "Please set grid power, meter power or house consumption."
+    },
+    "abort": {
+      "already_configured": "Solar Cockpit is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar Cockpit",
+        "description": "Point to entities of integrations you already have (inverter, PV forecast, meter reader …). Only PV power is required.",
+        "sections": {
+          "pv": {
+            "name": "Photovoltaics",
+            "data": {
+              "pv_power": "Total PV power",
+              "pv_strings": "PV strings (power)",
+              "pv_energy_total": "PV energy total"
+            },
+            "data_description": {
+              "pv_power": "Power of all strings (W/kW).",
+              "pv_strings": "Optional: individual MPPT/string power for the card.",
+              "pv_energy_total": "Cumulative counter in kWh – basis for yield, self-consumption and savings."
+            }
+          },
+          "battery": {
+            "name": "Battery",
+            "data": {
+              "battery_soc": "State of charge (SOC)",
+              "battery_power": "Battery power",
+              "battery_power_invert": "Invert sign (battery)",
+              "battery_charge_total": "Battery charged (total)",
+              "battery_discharge_total": "Battery discharged (total)",
+              "battery_capacity_kwh": "Usable capacity",
+              "battery_min_soc": "Discharge limit (SOC)"
+            },
+            "data_description": {
+              "battery_power": "One signed sensor.",
+              "battery_power_invert": "Target: positive = charging. Turn on if your inverter reports charging as a negative value.",
+              "battery_capacity_kwh": "Usable capacity, e.g. Ah × nominal voltage ÷ 1000.",
+              "battery_min_soc": "Below this SOC the inverter stops discharging."
+            }
+          },
+          "house": {
+            "name": "House & inverter grid",
+            "data": {
+              "house_power": "House consumption",
+              "grid_power": "Grid power",
+              "grid_power_invert": "Invert sign (grid)"
+            },
+            "data_description": {
+              "house_power": "Leave empty = PV + grid − battery.",
+              "grid_power": "One signed sensor.",
+              "grid_power_invert": "Target: positive = import (buying). Turn on if your inverter reports import as a negative value."
+            }
+          },
+          "meter": {
+            "name": "Utility meter (e.g. Tasmota reader)",
+            "data": {
+              "meter_import_total": "Import total (1.8.0)",
+              "meter_export_total": "Export total (2.8.0)",
+              "meter_power": "Meter power"
+            },
+            "data_description": {
+              "meter_import_total": "Billing meter, kWh.",
+              "meter_power": "Fallback only, if no grid power is set."
+            }
+          },
+          "forecast": {
+            "name": "Forecast (e.g. Forecast.Solar)",
+            "data": {
+              "forecast_today": "Forecast today",
+              "forecast_today_remaining": "Forecast rest of today",
+              "forecast_tomorrow": "Forecast tomorrow",
+              "forecast_power_now": "Forecast power now"
+            }
+          },
+          "prices": {
+            "name": "Prices",
+            "data": {
+              "price_buy_entity": "Import price from entity (optional)",
+              "price_buy": "Import price (start value)",
+              "price_sell_entity": "Feed-in tariff from entity (optional)",
+              "price_sell": "Feed-in tariff (start value)"
+            },
+            "data_description": {
+              "price_buy_entity": "Only for a dynamic tariff. Leave empty to set the price on the Solar Cockpit device or dashboard (ct/kWh is converted).",
+              "price_buy": "Start value of the 'Import price' setting. Change it later on the device or dashboard.",
+              "price_sell_entity": "Only for a variable feed-in tariff. Leave empty to use the 'Feed-in tariff' setting.",
+              "price_sell": "Start value of the 'Feed-in tariff' setting."
+            }
+          },
+          "surplus": {
+            "name": "PV surplus switch",
+            "data": {
+              "surplus_on_w": "Turn on at",
+              "surplus_off_w": "Turn off below",
+              "surplus_min_soc": "Minimum SOC"
+            },
+            "data_description": {
+              "surplus_on_w": "Surplus in W.",
+              "surplus_min_soc": "Only turn on when the battery is at least this full."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "surplus_hysteresis": "Turn-off threshold must be below turn-on threshold.",
+      "need_grid_or_house": "Please set grid power, meter power or house consumption."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pv_power": {
+        "name": "PV power"
+      },
+      "house_power": {
+        "name": "House consumption"
+      },
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "grid_import_power": {
+        "name": "Grid import"
+      },
+      "grid_export_power": {
+        "name": "Grid export"
+      },
+      "battery_power": {
+        "name": "Battery power"
+      },
+      "battery_charge_power": {
+        "name": "Battery charging"
+      },
+      "battery_discharge_power": {
+        "name": "Battery discharging"
+      },
+      "pv_surplus": {
+        "name": "PV surplus"
+      },
+      "self_sufficiency": {
+        "name": "Self-sufficiency now"
+      },
+      "self_consumption": {
+        "name": "Self-consumption now"
+      },
+      "battery_soc": {
+        "name": "Battery state of charge"
+      },
+      "battery_energy_available": {
+        "name": "Battery energy available"
+      },
+      "battery_energy_to_full": {
+        "name": "Battery energy to full"
+      },
+      "battery_time_remaining": {
+        "name": "Battery time remaining"
+      },
+      "price_buy": {
+        "name": "Effective import price"
+      },
+      "price_sell": {
+        "name": "Effective feed-in tariff"
+      },
+      "import": {
+        "name": "Import {period}"
+      },
+      "export": {
+        "name": "Export {period}"
+      },
+      "pv": {
+        "name": "PV yield {period}"
+      },
+      "self_consumed": {
+        "name": "Self-consumed {period}"
+      },
+      "consumption": {
+        "name": "Consumption {period}"
+      },
+      "battery_charge": {
+        "name": "Battery charged {period}"
+      },
+      "battery_discharge": {
+        "name": "Battery discharged {period}"
+      },
+      "autarky": {
+        "name": "Self-sufficiency {period}"
+      },
+      "cost": {
+        "name": "Import cost {period}"
+      },
+      "revenue": {
+        "name": "Feed-in revenue {period}"
+      },
+      "balance": {
+        "name": "Grid balance {period}"
+      },
+      "savings": {
+        "name": "PV savings {period}"
+      },
+      "benefit": {
+        "name": "PV benefit {period}"
+      },
+      "factor": {
+        "name": "Grid balance factor {period}"
+      },
+      "forecast_ratio": {
+        "name": "Forecast achievement {period}"
+      },
+      "battery_state": {
+        "name": "Battery state",
+        "state": {
+          "charging": "Charging",
+          "discharging": "Discharging",
+          "idle": "Idle"
+        }
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "degraded": "Sources missing"
+        }
+      }
+    },
+    "binary_sensor": {
+      "surplus_active": {
+        "name": "PV surplus available"
+      }
+    },
+    "number": {
+      "price_buy": {
+        "name": "Import price"
+      },
+      "price_sell": {
+        "name": "Feed-in tariff"
+      }
+    }
+  },
+  "services": {
+    "reset_period": {
+      "name": "Reset period",
+      "description": "Resets the meters of one period to 0.",
+      "fields": {
+        "period": {
+          "name": "Period",
+          "description": "Day, week, month or year."
+        }
+      }
+    }
+  },
+  "selector": {
+    "period": {
+      "options": {
+        "day": "Day",
+        "week": "Week",
+        "month": "Month",
+        "year": "Year"
+      }
+    }
+  }
+}

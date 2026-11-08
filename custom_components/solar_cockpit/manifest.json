@@ -1,0 +1,22 @@
+{
+  "domain": "solar_cockpit",
+  "name": "Solar Cockpit",
+  "after_dependencies": [
+    "frontend",
+    "http",
+    "lovelace",
+    "recorder"
+  ],
+  "codeowners": [
+    "@itfhunter"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/itfhunter/solar_cockpit",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/itfhunter/solar_cockpit/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.3.1"
+}

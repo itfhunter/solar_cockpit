@@ -1,0 +1,12 @@
+reset_period:
+  fields:
+    period:
+      required: true
+      selector:
+        select:
+          translation_key: period
+          options:
+            - day
+            - week
+            - month
+            - year
