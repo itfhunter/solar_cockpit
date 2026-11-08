@@ -20,7 +20,7 @@ What every style shows:
 
 - **PV, battery, grid and house** with live energy flows. Battery charging is green, discharging red. Grid *out* (selling) is green, *in* (buying) red. A connection without flow is a grey dashed line that stands still.
 - **The sun on its daily arc** from sunrise to sunset (`sun.sun`), with the part of the day already covered.
-- **PV forecast** (when Forecast.Solar or another forecast is configured): today's yield against the forecast, percentage reached, rest of today, tomorrow and expected vs. actual power.
+- **PV forecast** (when Forecast.Solar or another forecast is configured): today's yield against the forecast, percentage reached, rest of today, tomorrow and expected vs. actual power. The house model style adds a per-hour chart of expected vs. actual PV.
 - **Grid balance** for day / week / month / year: balance in €, factor (revenue ÷ cost), grid in and out, PV yield, consumption, PV savings, PV benefit and self-sufficiency.
 
 The house model and nature styles use pictures that switch to a night version after sunset or in dark mode. Tiles, control room, nature and glass read the last 24 hours from the recorder for their charts.
@@ -90,6 +90,10 @@ You can change everything later under *Configure*.
 If you built this with template helpers and utility meters before, let Solar Cockpit run alongside them and delete the old helpers once the values match. Static `input_number` price helpers that were configured as price entity in an earlier version are taken over into the price settings automatically.
 
 ## Changelog
+
+**0.4.0**
+- House model: the house sits lower so the sun's arc stays visible; the scene keeps a sensible size on wide dashboards.
+- House model: per-hour chart of expected vs. actual PV (forecast from any integration that feeds the Energy dashboard's solar forecast, e.g. Forecast.Solar).
 
 **0.3.1** – Neutral defaults: no pre-filled entity ids, generic start values for prices and battery capacity.
 

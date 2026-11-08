@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "solar_cockpit"
 NAME = "Solar Cockpit"
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 
 PLATFORMS = ["sensor", "binary_sensor", "number"]
 

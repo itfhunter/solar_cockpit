@@ -182,6 +182,8 @@ class SolarCockpitHub:
         self._unsubs: list[Any] = []
         self._seeded = False
         self.entity_map: dict[str, str] = {}
+        # [[hour, Wh], ...] for today from the forecast integration (if it offers one)
+        self.forecast_hours: list[list[int]] = []
         # Prices set on the integration's own number entities (€/kWh).
         # A configured price entity (e.g. a dynamic tariff) takes precedence.
         self.price_values: dict[str, float | None] = {
@@ -244,6 +246,11 @@ class SolarCockpitHub:
                 self.hass, self._handle_tick, timedelta(minutes=1)
             )
         )
+        self._unsubs.append(
+            async_track_time_interval(
+                self.hass, self._async_refresh_forecast_hours, timedelta(minutes=15)
+            )
+        )
 
         if self.hass.state is CoreState.running:
             await self._async_first_run()
@@ -260,6 +267,49 @@ class SolarCockpitHub:
         if not self._seeded:
             await self._async_seed_from_statistics()
         self._recalculate(update_meters=True)
+        await self._async_refresh_forecast_hours()
+
+    async def _async_refresh_forecast_hours(self, _now: datetime | None = None) -> None:
+        """Hourly forecast for today via the forecast integration's energy platform.
+
+        Works for every integration that serves the Energy dashboard's solar
+        forecast (Forecast.Solar, Solcast, ...). Silently skipped otherwise.
+        """
+        entity_id = self.config.get(CONF_FC_TODAY)
+        if not entity_id:
+            return
+        try:
+            from homeassistant.components.energy.websocket_api import (
+                async_get_energy_platforms,
+            )
+            from homeassistant.helpers import entity_registry as er
+
+            reg = er.async_get(self.hass).async_get(entity_id)
+            entry = (
+                self.hass.config_entries.async_get_entry(reg.config_entry_id)
+                if reg and reg.config_entry_id
+                else None
+            )
+            if entry is None:
+                return
+            get_forecast = (await async_get_energy_platforms(self.hass)).get(entry.domain)
+            if get_forecast is None:
+                return
+            data = await get_forecast(self.hass, entry.entry_id)
+        except Exception:  # noqa: BLE001 - optional feature
+            _LOGGER.debug("No hourly forecast available", exc_info=True)
+            return
+        today = dt_util.now().date()
+        hours: dict[int, float] = {}
+        for key, value in ((data or {}).get("wh_hours") or {}).items():
+            moment = dt_util.parse_datetime(key) if isinstance(key, str) else key
+            if moment is None:
+                continue
+            moment = dt_util.as_local(moment)
+            if moment.date() == today:
+                hours[moment.hour] = hours.get(moment.hour, 0.0) + float(value or 0)
+        self.forecast_hours = [[h, round(hours[h])] for h in sorted(hours)]
+        self._notify()
 
     async def async_unload(self) -> None:
         for unsub in self._unsubs:

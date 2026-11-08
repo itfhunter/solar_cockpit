@@ -415,6 +415,7 @@ class StatusSensor(_Base):
             "forecast_today_remaining": live.forecast_today_remaining,
             "forecast_tomorrow": live.forecast_tomorrow,
             "forecast_power_now": live.forecast_power_now,
+            "forecast_hours": self.hub.forecast_hours,
             "surplus_active": live.surplus_active,
             "version": VERSION,
         }

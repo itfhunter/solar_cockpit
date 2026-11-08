@@ -3,7 +3,7 @@
  * Nine visual styles, each in a light and a dark version, English and German.
  * No build step, no external dependencies.
  */
-const CARD_VERSION = "0.3.1";
+const CARD_VERSION = "0.4.0";
 
 const STYLES = ["minimal", "glass", "flow", "tiles", "house", "sunpath", "control", "nature", "orbit"];
 const PERIODS = ["day", "week", "month", "year"];
@@ -22,6 +22,7 @@ const I18N = {
     autarky: "Self-sufficiency", restToday: "Rest of today", tomorrow: "Tomorrow", forecastReached: "Forecast reached",
     surplus: "Surplus", surplusOn: "Surplus switch on", details: "Details", night: "Night",
     forecast: "PV forecast", todayOf: "Today {a} of {b}", expectedNow: "Expected now", actualNow: "actual",
+    perHour: "Per hour: expected vs. actual", expected2: "Expected", actual2: "Actual",
     sunriseAt: "Sunrise", periods: { day: "Day", week: "Week", month: "Month", year: "Year" },
     notFound: "Status sensor {e} not found. Is the Solar Cockpit integration set up?",
     styleNames: { minimal: "Minimal", glass: "Glass & night", flow: "Energy flow", tiles: "Tiles", house: "House model",
@@ -40,6 +41,7 @@ const I18N = {
     autarky: "Autarkie", restToday: "Rest heute", tomorrow: "Morgen", forecastReached: "Prognose erreicht",
     surplus: "Überschuss", surplusOn: "Überschuss-Schalter an", details: "Details", night: "Nacht",
     forecast: "PV-Prognose", todayOf: "Heute {a} von {b}", expectedNow: "Erwartet jetzt", actualNow: "tatsächlich",
+    perHour: "Pro Stunde: erwartet vs. tatsächlich", expected2: "Erwartet", actual2: "Tatsächlich",
     sunriseAt: "Sonnenaufgang", periods: { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" },
     notFound: "Status-Sensor {e} nicht gefunden. Ist die Solar-Cockpit-Integration eingerichtet?",
     styleNames: { minimal: "Minimal", glass: "Glas & Nacht", flow: "Energiefluss", tiles: "Kacheln", house: "Hausmodell",
@@ -250,6 +252,7 @@ class SolarCockpitCard extends HTMLElement {
       pvDay: this._num("pv_day"), consDay: this._num("consumption_day"), buyDay: this._num("import_day"), sellDay: this._num("export_day"),
       ratio: this._num("forecast_ratio_day"),
       fc: a.forecast_today, fcRest: a.forecast_today_remaining, fcTomorrow: a.forecast_tomorrow, fcNow: a.forecast_power_now,
+      fcHours: a.forecast_hours || [],
       strings: (a.pv_strings || []).filter((v) => v !== null),
       surplusOn: !!a.surplus_active, ok: st.state === "ok", missing: a.missing_sources || [],
       hasBat: this._eid("battery_power") !== null || this._eid("battery_soc") !== null,
@@ -264,7 +267,7 @@ class SolarCockpitCard extends HTMLElement {
 
   /* ---------------------------------------------------------- history */
   _maybeFetchHistory() {
-    const needs = ["glass", "tiles", "control", "nature"].includes(this._config.style);
+    const needs = ["glass", "tiles", "control", "nature", "house"].includes(this._config.style);
     if (!needs || !this._hass || !this._hass.callWS || !this._status()) return;
     const now = Date.now();
     if (this._histBusy || (this._histAt && now - this._histAt < 300000)) return;
@@ -283,6 +286,7 @@ class SolarCockpitCard extends HTMLElement {
         out[k] = bucket(res[eid] || [], start.getTime(), end.getTime(), 48);
       }
       out.start = start; out.end = end;
+      out.pvRaw = rawPoints(res[this._eid("pv_power")] || []);
       this._hist = out;
       this._histAt = Date.now();
       this._histStamp = this._histAt;
@@ -538,29 +542,29 @@ class SolarCockpitCard extends HTMLElement {
   _s_house(d) {
     const T = (k) => this._t(k);
     const night = this._night(d);
-    // picture box (1000x675 source) and anchor points on it
-    const IX = 82, IY = 14, IW = 236, IH = 159;
+    // picture box (1000x675 source) sits low, so the sun arc above the roof stays visible
+    const IX = 82, IY = 66, IW = 236, IH = 159;
     const at = (fx, fy) => [IX + IW * fx, IY + IH * fy];
     const roof = at(0.42, 0.24), door = at(0.33, 0.8), wall = at(0.8, 0.6), base = at(0.5, 0.97);
     let svg = `<defs><linearGradient id="hsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="sky1"/><stop offset="1" class="sky2"/></linearGradient></defs>
-      <rect x="0" y="0" width="400" height="262" rx="16" fill="url(#hsky)"/>`;
+      <rect x="0" y="0" width="400" height="306" rx="16" fill="url(#hsky)"/>`;
     if (d.sun.f === null) svg += `<g class="stars">${[[30, 24], [70, 14], [120, 30], [300, 20], [352, 44], [250, 10], [380, 16]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.1"/>`).join("")}</g>`;
-    svg += this._arc(200, 150, 186, 124, d, { labels: false, r: 8 });
+    svg += this._arc(200, 176, 178, 148, d, { labels: false, r: 9 });
     svg += `<image href="${this._img(night ? "house_night" : "house_day")}" x="${IX}" y="${IY}" width="${IW}" height="${IH}" preserveAspectRatio="xMidYMid meet"/>`;
     // slim pylon picture (386x756) right of the house, standing on the same ground line
-    const PX = 333, PY = 64, PW = 50, PH = 98;
+    const PX = 333, PH = 98, PW = 50, PY = base[1] - PH + 2;
     svg += `<image href="${this._img(night ? "pylon_night" : "pylon_day")}" x="${PX}" y="${PY}" width="${PW}" height="${PH}" preserveAspectRatio="xMidYMax meet"/>`;
     const arm = [PX + PW * 0.12, PY + PH * 0.24];
     // connections
-    svg += this._flow(`M110 44 C140 44 150 ${roof[1]} ${roof[0]} ${roof[1]}`, "pv", d);
-    if (d.hasBat) svg += this._flow(`M${door[0]} ${door[1]} C${door[0] - 20} ${door[1] + 24} 130 152 110 152`, "bat", d);
+    svg += this._flow(`M110 56 C140 56 150 ${roof[1]} ${roof[0]} ${roof[1]}`, "pv", d);
+    if (d.hasBat) svg += this._flow(`M${door[0]} ${door[1]} C${door[0] - 20} ${door[1] + 24} 130 206 110 206`, "bat", d);
     svg += this._flow(`M${wall[0]} ${wall[1]} C${wall[0] + 26} ${wall[1] - 4} ${arm[0] - 18} ${arm[1] + 10} ${arm[0]} ${arm[1]}`, "grid", d);
-    svg += this._flow(`M${base[0]} ${base[1]} L200 212`, "home", d);
-    svg += this._pill(58, 44, 104, 44, this._iconPv(d), T("pv"), this._p(d.pv), "var(--ink)", null, "pv_power");
-    if (d.hasBat) svg += this._pill(58, 152, 104, 44, this._iconBat(d), T("battery"), d.soc === null ? "–" : `${this._n(d.soc)} %`, this._socColor(d), null, "battery_soc");
-    svg += this._pill(342, 192, 108, 44, this._iconGrid(d), `${T("grid")} · ${this._gridText(d)}`, this._p(d.grid), this._gridColor(d), null, "grid_power");
-    svg += this._pill(200, 232, 112, 42, this._iconHome(), T("house"), this._p(d.home), "var(--c-home)", null, "house_power");
-    return `<div class="stage art"><svg class="scene" viewBox="0 0 400 262" role="img" aria-label="${this._aria(d)}">${svg}</svg></div>
+    svg += this._flow(`M${base[0]} ${base[1]} L200 254`, "home", d);
+    svg += this._pill(58, 56, 104, 44, this._iconPv(d), T("pv"), this._p(d.pv), "var(--ink)", null, "pv_power");
+    if (d.hasBat) svg += this._pill(58, 206, 104, 44, this._iconBat(d), T("battery"), d.soc === null ? "–" : `${this._n(d.soc)} %`, this._socColor(d), null, "battery_soc");
+    svg += this._pill(342, 250, 108, 44, this._iconGrid(d), `${T("grid")} · ${this._gridText(d)}`, this._p(d.grid), this._gridColor(d), null, "grid_power");
+    svg += this._pill(200, 276, 112, 42, this._iconHome(), T("house"), this._p(d.home), "var(--c-home)", null, "house_power");
+    return `<div class="stage art"><svg class="scene" viewBox="0 0 400 306" role="img" aria-label="${this._aria(d)}">${svg}</svg></div>
       <div class="strip">${this._chipsToday(d)}</div>`;
   }
 
@@ -705,6 +709,55 @@ class SolarCockpitCard extends HTMLElement {
     </div>`;
   }
 
+  /* Per-hour chart: forecast (dashed) against measured PV (area) for today */
+  _hourly(d) {
+    const fc = (d.fcHours || []).filter((r) => Array.isArray(r) && r.length === 2);
+    if (!fc.length) return "";
+    const T = (k) => this._t(k);
+    const now = this._now();
+    const day0 = new Date(now); day0.setHours(0, 0, 0, 0);
+    const actual = {};
+    const raw = d.hist && d.hist.pvRaw;
+    if (raw && raw.length) {
+      for (let h = 0; h <= now.getHours(); h++) {
+        const a = day0.getTime() + h * 3600000;
+        const b = Math.min(a + 3600000, now.getTime());
+        const v = timeWeighted(raw, a, b);
+        if (v !== null) actual[h] = v; // mean W over the hour = Wh per full hour (running hour projected)
+      }
+    }
+    const lit = fc.filter(([, wh]) => wh > 0).map(([h]) => h);
+    const h0 = Math.max(0, Math.min(...lit, now.getHours()) - 1);
+    const h1 = Math.min(23, Math.max(...lit) + 1);
+    const hours = []; for (let h = h0; h <= h1; h++) hours.push(h);
+    const fcMap = Object.fromEntries(fc);
+    const max = Math.max(100, ...hours.map((h) => Math.max(fcMap[h] || 0, actual[h] || 0)));
+    const top = Math.ceil(max / 500) * 500;
+    const W = 400, H = 130, L = 30, R = 10, B = H - 18, TOP = 8;
+    const x = (h) => L + ((h - h0) / Math.max(1, h1 - h0)) * (W - L - R);
+    const y = (wh) => B - (wh / top) * (B - TOP);
+    let g = "";
+    for (let k = 0; k <= 4; k++) {
+      const v = (top / 4) * k, yy = y(v);
+      g += `<line class="grid" x1="${L}" y1="${yy.toFixed(1)}" x2="${W - R}" y2="${yy.toFixed(1)}"/><text class="axis" x="${L - 4}" y="${(yy + 3).toFixed(1)}" text-anchor="end">${this._n(v / 1000, 1)}</text>`;
+    }
+    for (const h of hours) if ((h - h0) % 2 === 0) g += `<text class="axis" x="${x(h).toFixed(1)}" y="${H - 4}" text-anchor="middle">${String(h).padStart(2, "0")}</text>`;
+    const nowX = x(Math.min(h1, Math.max(h0, now.getHours() + now.getMinutes() / 60)));
+    g += `<line class="nowline" x1="${nowX.toFixed(1)}" y1="${TOP}" x2="${nowX.toFixed(1)}" y2="${B}"/>`;
+    const act = hours.filter((h) => actual[h] !== undefined);
+    if (act.length) {
+      const pts = act.map((h) => `${x(h).toFixed(1)},${y(actual[h]).toFixed(1)}`);
+      g += `<path d="M${x(act[0]).toFixed(1)},${B} L${pts.join(" L")} L${x(act[act.length - 1]).toFixed(1)},${B} Z" style="fill:var(--c-good);opacity:.16"/>`;
+      g += `<path d="M${pts.join(" L")}" style="fill:none;stroke:var(--c-good);stroke-width:2.2;stroke-linejoin:round"/>`;
+      g += act.map((h) => `<circle cx="${x(h).toFixed(1)}" cy="${y(actual[h]).toFixed(1)}" r="2.2" style="fill:var(--c-good)"/>`).join("");
+    }
+    const fpts = hours.map((h) => `${x(h).toFixed(1)},${y(fcMap[h] || 0).toFixed(1)}`);
+    g += `<path d="M${fpts.join(" L")}" style="fill:none;stroke:var(--c-pv);stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round"/>`;
+    const legend = `<span><i style="background:var(--c-pv)"></i>${T("expected2")}</span><span><i style="background:var(--c-good)"></i>${T("actual2")}</span>`;
+    return `<div class="fcast hourly"><div class="ptitle">${T("perHour")}<span class="legend">${legend}</span></div>
+      <svg class="chart" viewBox="0 -8 ${W} ${H + 8}" role="img" aria-label="${T("perHour")}">${g}<text class="axis" x="${L - 4}" y="-1" text-anchor="end">kWh</text></svg></div>`;
+  }
+
   /* ----------------------------------------------------- costs + more */
   _chips(d) {
     const c = [];
@@ -788,6 +841,7 @@ class SolarCockpitCard extends HTMLElement {
         ${title ? `<div class="head"><span>${title}</span><span class="hsub">${svgIcon("house", 16, "var(--muted)")} ${this._t("styleNames")[style]}</span></div>` : ""}
         ${body}
         ${this._forecast(d)}
+        ${style === "house" ? this._hourly(d) : ""}
         ${this._chips(d)}
         ${this._costs()}
         ${this._details()}
@@ -805,6 +859,25 @@ class SolarCockpitCard extends HTMLElement {
         this._render();
       }));
   }
+}
+
+/* raw history rows -> sorted [{t, v}] */
+function rawPoints(rows) {
+  return rows.map((r) => ({ t: (r.lu !== undefined ? r.lu * 1000 : Date.parse(r.last_updated || r.last_changed)), v: parseFloat(r.s !== undefined ? r.s : r.state) }))
+    .filter((p) => !isNaN(p.v)).sort((a, b) => a.t - b.t);
+}
+/* time-weighted mean of a step signal between a and b (ms) */
+function timeWeighted(pts, a, b) {
+  if (b <= a) return null;
+  let last = null, sum = 0, covered = 0, t = a;
+  for (const p of pts) {
+    if (p.t <= a) { last = p.v; continue; }
+    if (p.t >= b) break;
+    if (last !== null) { sum += last * (p.t - t); covered += p.t - t; }
+    last = p.v; t = p.t;
+  }
+  if (last !== null) { sum += last * (b - t); covered += b - t; }
+  return covered > 0 ? sum / covered : null;
 }
 
 /* average history states into n equal time buckets */
@@ -930,6 +1003,9 @@ function css() {
   .brow b { color: var(--ink); } .bt { grid-column: 1 / -1; height:7px; border-radius:4px; background: var(--line); overflow:hidden; } .bt span { display:block; height:100%; border-radius:4px; }
 
   .art { overflow:hidden; border-radius:16px; }
+  .s-house .stage.art { width:100%; max-width:820px; margin:0 auto; }
+  .nowline { stroke: var(--muted); stroke-width:1; stroke-dasharray:2 3; opacity:.7; }
+  .hourly .chart { margin-top:2px; }
   .s-house.light .sky1 { stop-color:#cfe6fb; } .s-house.light .sky2 { stop-color:#f4f8fc; }
   .s-house.dark .sky1 { stop-color:#0a1222; } .s-house.dark .sky2 { stop-color:#1c2a44; }
   .s-house .art .scene image, .nart image { pointer-events:none; }

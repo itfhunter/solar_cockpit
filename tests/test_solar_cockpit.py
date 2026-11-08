@@ -198,3 +198,34 @@ async def test_migration_v1(hass: HomeAssistant) -> None:
     assert "price_buy_entity" not in entry.data["prices"]
     assert "submeter_power" not in entry.data["house"]
     assert float(hass.states.get("number.solar_cockpit_price_buy").state) == 0.31
+
+
+async def test_forecast_hours_from_energy_platform(hass: HomeAssistant, freezer) -> None:
+    from unittest.mock import patch as _patch
+
+    from homeassistant.helpers import entity_registry as er
+
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to(datetime(2026, 11, 8, 12, 0, tzinfo=dt_util.get_default_time_zone()))
+    fc_entry = MockConfigEntry(domain="forecast_solar", data={})
+    fc_entry.add_to_hass(hass)
+    er.async_get(hass).async_get_or_create(
+        "sensor", "forecast_solar", "today", config_entry=fc_entry, suggested_object_id="forecast_today"
+    )
+
+    async def fake_forecast(_hass, entry_id):
+        assert entry_id == fc_entry.entry_id
+        return {"wh_hours": {
+            "2026-11-08T09:00:00+01:00": 300,
+            "2026-11-08T12:00:00+01:00": 1500,
+            "2026-11-09T12:00:00+01:00": 999,  # tomorrow, ignored
+        }}
+
+    with _patch(
+        "homeassistant.components.energy.websocket_api.async_get_energy_platforms",
+        return_value={"forecast_solar": fake_forecast},
+    ):
+        await _setup(hass)
+        await hass.async_block_till_done()
+    hours = hass.states.get("sensor.solar_cockpit_status").attributes["forecast_hours"]
+    assert hours == [[9, 300], [12, 1500]]

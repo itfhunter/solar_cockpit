@@ -2,6 +2,7 @@
   "domain": "solar_cockpit",
   "name": "Solar Cockpit",
   "after_dependencies": [
+    "energy",
     "frontend",
     "http",
     "lovelace",
@@ -18,5 +19,5 @@
   "issue_tracker": "https://github.com/itfhunter/solar_cockpit/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.3.1"
+  "version": "0.4.0"
 }
